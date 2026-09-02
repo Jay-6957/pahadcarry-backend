@@ -1,0 +1,2 @@
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_fee NUMERIC(10,2);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;

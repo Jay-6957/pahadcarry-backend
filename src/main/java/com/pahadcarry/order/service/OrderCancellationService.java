@@ -181,7 +181,10 @@ public class OrderCancellationService {
 
         log.info("Order {} cancelled by ADMIN with ZERO penalty. Reason: {}", orderId, order.getCancellationReason());
 
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        notificationService.notifyUser(saved.getCustomerId(), "Order cancelled",
+            "Order " + orderId + " was cancelled by operations.", orderId);
+        return saved;
     }
 
     private BigDecimal calculateDynamicFee(String status, BigDecimal estimate) {

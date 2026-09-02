@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/drivers/me")
@@ -169,6 +171,8 @@ public class DriverBatchController {
         // Update corresponding order status
         if (stop.getOrderId() != null) {
             orderRepository.findById(stop.getOrderId()).ifPresent(order -> {
+                String previousStatus = order.getStatus();
+                String previousPaymentStatus = order.getPaymentStatus();
                 if ("PICKUP".equals(stop.getStopType())) {
                     order.setStatus("PICKED_UP");
                     order.setPickedUpAt(Instant.now());
@@ -180,7 +184,35 @@ public class DriverBatchController {
                     }
                 }
                 orderRepository.save(order);
+
+                if (!Objects.equals(order.getStatus(), previousStatus)) {
+                    notificationService.notifyUser(order.getCustomerId(),
+                            "Order status updated",
+                            statusMessage(order), order.getId());
+                }
+                if (!Objects.equals(order.getPaymentStatus(), previousPaymentStatus)) {
+                    notificationService.notifyUser(order.getCustomerId(),
+                            "Payment received",
+                            "Cash payment of ₹" + stop.getCashCollected() + " was recorded for order " + order.getId() + ".",
+                            order.getId());
+                }
             });
+        }
+
+        if ("HUB".equals(stop.getStopType())) {
+            batchStopRepository.findByBatchIdOrderBySequenceAsc(batch.getId()).stream()
+                    .map(BatchStop::getOrderId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .forEach(orderId -> orderRepository.findById(orderId).ifPresent(order -> {
+                        if (!Set.of("DELIVERED", "CANCELLED").contains(order.getStatus())) {
+                            order.setStatus("AT_HUB");
+                            orderRepository.save(order);
+                            notificationService.notifyUser(order.getCustomerId(),
+                                    "Order reached hub",
+                                    "Your order " + order.getId() + " has reached the Haldwani hub.", order.getId());
+                        }
+                    }));
         }
 
         if ("ASSIGNED".equals(batch.getStatus())) {
@@ -209,6 +241,10 @@ public class DriverBatchController {
         });
 
         return ResponseEntity.ok(ApiResponse.ok(stop));
+    }
+
+    private String statusMessage(Order order) {
+        return "Your order " + order.getId() + " is now " + order.getStatus() + ".";
     }
 
     @PostMapping("/batches/{batchId}/complete")

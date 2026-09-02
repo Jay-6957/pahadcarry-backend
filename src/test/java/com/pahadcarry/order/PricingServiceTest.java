@@ -63,4 +63,17 @@ class PricingServiceTest {
         assertTrue(pricingService.isDedicatedTrip(BigDecimal.valueOf(100.5)));
         assertTrue(pricingService.isDedicatedTrip(BigDecimal.valueOf(250)));
     }
+
+    @Test
+    void testFareBreakdownUsesConfiguredRateCard() {
+        when(configRepository.getConfig()).thenReturn(config);
+
+        PricingService.FareBreakdown breakdown = pricingService.calculateBreakdown(
+                BigDecimal.valueOf(50.0), 29.2183, 79.5130, 29.3803, 79.4636);
+
+        assertEquals(config.getBaseFare(), breakdown.baseFare());
+        assertEquals(0, BigDecimal.valueOf(200.00).compareTo(breakdown.weightCharge()));
+        assertEquals(0, breakdown.baseFare().add(breakdown.distanceCharge()).add(breakdown.weightCharge()).compareTo(breakdown.estimatedFare()));
+        assertTrue(breakdown.distanceKm().compareTo(BigDecimal.ZERO) > 0);
+    }
 }

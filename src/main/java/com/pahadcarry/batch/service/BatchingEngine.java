@@ -7,6 +7,7 @@ import com.pahadcarry.batch.repository.BatchStopRepository;
 import com.pahadcarry.config.repository.SystemConfigRepository;
 import com.pahadcarry.order.model.Order;
 import com.pahadcarry.order.repository.OrderRepository;
+import com.pahadcarry.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,6 +32,7 @@ public class BatchingEngine {
     private final BatchRepository batchRepository;
     private final BatchStopRepository batchStopRepository;
     private final SystemConfigRepository configRepository;
+    private final NotificationService notificationService;
 
     // Haldwani Central Hub coordinates
     private static final double HUB_LAT = 29.2183;
@@ -106,6 +108,10 @@ public class BatchingEngine {
                 order.setStatus("BATCHED");
                 order.setBatchedAt(Instant.now());
                 orderRepository.save(order);
+                notificationService.notifyUser(order.getCustomerId(),
+                    "Order added to a batch",
+                    "Your order " + order.getId() + " is now BATCHED and scheduled for dispatch.",
+                    batchId);
             }
         }
 

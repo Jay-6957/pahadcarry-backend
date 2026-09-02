@@ -25,17 +25,22 @@ public class OrderController {
     private final OrderCancellationService cancellationService;
     private final PricingService pricingService;
 
-    @PostMapping("/estimate")
+    @GetMapping("/estimate")
     public ResponseEntity<ApiResponse<Map<String, Object>>> estimateFare(
             @RequestParam Double pickupLat,
             @RequestParam Double pickupLng,
             @RequestParam Double dropLat,
             @RequestParam Double dropLng,
             @RequestParam BigDecimal weightKg) {
-        BigDecimal fare = pricingService.calculateFare(weightKg, pickupLat, pickupLng, dropLat, dropLng);
+        PricingService.FareBreakdown breakdown = pricingService.calculateBreakdown(
+            weightKg, pickupLat, pickupLng, dropLat, dropLng);
         boolean isDedicated = pricingService.isDedicatedTrip(weightKg);
         return ResponseEntity.ok(ApiResponse.ok(Map.of(
-                "estimatedFare", fare,
+            "estimatedFare", breakdown.estimatedFare(),
+            "distanceKm", breakdown.distanceKm(),
+            "baseFare", breakdown.baseFare(),
+            "distanceCharge", breakdown.distanceCharge(),
+            "weightCharge", breakdown.weightCharge(),
                 "orderType", isDedicated ? "DEDICATED_TRIP" : "STANDARD_POOL",
                 "currency", "INR"
         )));

@@ -21,6 +21,11 @@ public class PricingService {
      */
     public BigDecimal calculateFare(BigDecimal weightKg, double pickupLat, double pickupLng,
                                     double dropLat, double dropLng) {
+        return calculateBreakdown(weightKg, pickupLat, pickupLng, dropLat, dropLng).estimatedFare();
+        }
+
+        public FareBreakdown calculateBreakdown(BigDecimal weightKg, double pickupLat, double pickupLng,
+                            double dropLat, double dropLng) {
         SystemConfig config = configRepository.getConfig();
         double distanceKm = haversineDistanceKm(pickupLat, pickupLng, dropLat, dropLng);
 
@@ -32,7 +37,14 @@ public class PricingService {
                 .multiply(weightKg)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        return config.getBaseFare().add(distanceCost).add(weightCost).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal estimatedFare = config.getBaseFare().add(distanceCost).add(weightCost).setScale(2, RoundingMode.HALF_UP);
+        return new FareBreakdown(
+            BigDecimal.valueOf(distanceKm).setScale(2, RoundingMode.HALF_UP),
+            config.getBaseFare(),
+            distanceCost,
+            weightCost,
+            estimatedFare
+        );
     }
 
     public boolean isDedicatedTrip(BigDecimal weightKg) {
@@ -52,5 +64,13 @@ public class PricingService {
                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
+    }
+
+    public record FareBreakdown(
+            BigDecimal distanceKm,
+            BigDecimal baseFare,
+            BigDecimal distanceCharge,
+            BigDecimal weightCharge,
+            BigDecimal estimatedFare) {
     }
 }
